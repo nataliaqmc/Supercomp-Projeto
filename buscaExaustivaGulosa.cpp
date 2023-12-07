@@ -2,77 +2,88 @@
 #include <fstream>
 #include <vector>
 #include <algorithm>
+#include <list>
 
-std::vector<int> EncontrarCliqueMaxima(std::vector<std::vector<int>> grafo, int numVertices) {
-    std::vector<int> cliqueMaxima;
+std::vector<std::vector<int>> LerGrafo(const std::string& nomeArquivo, int& numVertices) {
+    std::ifstream arquivo(nomeArquivo);
+    int numArestas = 0;
+    arquivo >> numVertices >> numArestas;
 
-    while (!grafo.empty()) {
-        // Encontrar o vértice com mais arestas para a clique existente
-        int verticeEscolhido = -1;
-        int maxArestasConectadas = -1;
+    std::vector<std::vector<int>> grafo(numVertices, std::vector<int>(numVertices, 0));
 
-        for (int i = 0; i < numVertices; ++i) {
-            if (std::find(cliqueMaxima.begin(), cliqueMaxima.end(), i) == cliqueMaxima.end()) {
-                int arestasConectadas = 0;
+    for (int i = 0; i < numArestas; ++i) {
+        int u, v;
+        arquivo >> u >> v;
+        grafo[u - 1][v - 1] = 1;
+        grafo[v - 1][u - 1] = 1;  // O grafo é não direcionado
+    }
 
-                for (int v : cliqueMaxima) {
-                    if (grafo[i][v] == 1) {
-                        ++arestasConectadas;
-                    }
-                }
+    arquivo.close();
+    return grafo;
+}
 
-                if (arestasConectadas > maxArestasConectadas) {
-                    maxArestasConectadas = arestasConectadas;
-                    verticeEscolhido = i;
-                }
+std::list<int> EncontrarCliqueMaxima(std::vector<std::vector<int>>& grafo, int numVertices) {
+    std::list<int> cliqueMaxima;
+    std::list<int> candidatos;
+
+    // Inicialmente, todos os nós são candidatos
+    for (int i = 0; i < numVertices; ++i) {
+        candidatos.push_back(i);
+    }
+
+    // Heurística de busca gulosa: escolher o vértice de maior grau
+    auto grauComparator = [&](int a, int b) {
+        return std::count(grafo[a].begin(), grafo[a].end(), 1) > std::count(grafo[b].begin(), grafo[b].end(), 1);
+    };
+
+    candidatos.sort(grauComparator);
+
+    while (!candidatos.empty()) {
+        int v = candidatos.front();
+        candidatos.pop_front();
+
+        bool podeAdicionar = true;
+
+        for (int u : cliqueMaxima) {
+            if (grafo[u][v] == 0) {
+                podeAdicionar = false;
+                break;
             }
         }
 
-        if (verticeEscolhido == -1) {
-            break;  // Não há mais vértices para adicionar à clique
+        if (podeAdicionar) {
+            cliqueMaxima.push_back(v);
+
+            std::list<int> novosCandidatos;
+
+            for (int u : candidatos) {
+                bool adjacenteATodos = true;
+
+                for (int c : cliqueMaxima) {
+                    if (grafo[u][c] == 0) {
+                        adjacenteATodos = false;
+                        break;
+                    }
+                }
+
+                if (adjacenteATodos) {
+                    novosCandidatos.push_back(u);
+                }
+            }
+
+            novosCandidatos.sort(grauComparator);
+            candidatos = novosCandidatos;
         }
-
-        // Adicionar vértice à clique máxima
-        cliqueMaxima.push_back(verticeEscolhido);
-
-        // Remover vértice e seus vizinhos do grafo
-        grafo.erase(grafo.begin() + verticeEscolhido);
-        for (int i = 0; i < numVertices; ++i) {
-            grafo[i].erase(grafo[i].begin() + verticeEscolhido);
-        }
-
-        --numVertices;
     }
 
     return cliqueMaxima;
 }
 
 int main() {
-    std::string nomeArquivo;
-    std::cout << "Digite o nome do arquivo contendo o grafo: ";
-    std::cin >> nomeArquivo;
-
-    std::ifstream arquivo(nomeArquivo);
-
-    if (!arquivo.is_open()) {
-        std::cerr << "Erro ao abrir o arquivo." << std::endl;
-        return 1;
-    }
-
-    int numVertices;
-    arquivo >> numVertices;
-
-    std::vector<std::vector<int>> grafo(numVertices, std::vector<int>(numVertices, 0));
-
-    for (int i = 0; i < numVertices; ++i) {
-        for (int j = 0; j < numVertices; ++j) {
-            arquivo >> grafo[i][j];
-        }
-    }
-
-    arquivo.close();
-
-    std::vector<int> maxClique = EncontrarCliqueMaxima(grafo, numVertices);
+    std::string nomeArquivo = "grafo.txt";
+    int numVertices = 1000;
+    std::vector<std::vector<int>> grafo = LerGrafo(nomeArquivo, numVertices);
+    std::list<int> maxClique = EncontrarCliqueMaxima(grafo, numVertices);
 
     std::cout << "Clique Máxima: ";
     for (int node : maxClique) {

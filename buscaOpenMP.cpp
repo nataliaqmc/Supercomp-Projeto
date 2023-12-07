@@ -1,8 +1,9 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <algorithm>
 #include <list>
+#include <algorithm>
+#include <omp.h>
 
 std::vector<std::vector<int>> LerGrafo(const std::string& nomeArquivo, int& numVertices) {
     std::ifstream arquivo(nomeArquivo);
@@ -19,13 +20,12 @@ std::vector<std::vector<int>> LerGrafo(const std::string& nomeArquivo, int& numV
     }
 
     arquivo.close();
-    std::cout << "aqui" << std::endl;
-
     return grafo;
 }
-std::list<int> EncontrarCliqueMaxima(std::vector<std::vector<int>>& grafo, int numVertices) {
-    std::list<int> cliqueMaxima;
-    std::list<int> candidatos;
+
+std::vector<int> EncontrarCliqueMaxima(std::vector<std::vector<int>>& grafo, int numVertices) {
+    std::vector<int> cliqueMaxima;
+    std::vector<int> candidatos;
 
     // Inicialmente, todos os nós são candidatos
     for (int i = 0; i < numVertices; ++i) {
@@ -33,23 +33,34 @@ std::list<int> EncontrarCliqueMaxima(std::vector<std::vector<int>>& grafo, int n
     }
 
     while (!candidatos.empty()) {
-        int v = candidatos.back();
-        candidatos.pop_back();
+        int v;
+        #pragma omp critical
+        {
+            v = candidatos.back();
+            candidatos.pop_back();
+        }
 
         bool podeAdicionar = true;
 
+        #pragma omp parallel for shared(podeAdicionar) num_threads(omp_get_max_threads())
         for (int u : cliqueMaxima) {
             if (grafo[u][v] == 0) {
-                podeAdicionar = false;
-                break;
+                #pragma omp critical
+                {
+                    podeAdicionar = false;
+                }
             }
         }
 
         if (podeAdicionar) {
-            cliqueMaxima.push_back(v);
+            #pragma omp critical
+            {
+                cliqueMaxima.push_back(v);
+            }
 
-            std::list<int> novosCandidatos;
+            std::vector<int> novosCandidatos;
 
+            #pragma omp parallel for shared(novosCandidatos) num_threads(omp_get_max_threads())
             for (int u : candidatos) {
                 bool adjacenteATodos = true;
 
@@ -61,23 +72,37 @@ std::list<int> EncontrarCliqueMaxima(std::vector<std::vector<int>>& grafo, int n
                 }
 
                 if (adjacenteATodos) {
-                    novosCandidatos.push_back(u);
+                    #pragma omp critical
+                    {
+                        novosCandidatos.push_back(u);
+                    }
                 }
             }
 
-            candidatos = novosCandidatos;
+            #pragma omp critical
+            {
+                candidatos = novosCandidatos;
+            }
         }
     }
 
     return cliqueMaxima;
 }
 
-
 int main() {
     std::string nomeArquivo = "grafo.txt";
     int numVertices = 1000;
-    std::vector<std::vector<int>> grafo =  LerGrafo(nomeArquivo,numVertices);
-    std::list<int> maxClique = EncontrarCliqueMaxima(grafo, numVertices);
+    std::vector<std::vector<int>> grafo = LerGrafo(nomeArquivo, numVertices);
+
+    std::vector<int> maxClique;
+
+    #pragma omp parallel
+    {
+        #pragma omp single
+        {
+            maxClique = EncontrarCliqueMaxima(grafo, numVertices);
+        }
+    }
 
     std::cout << "Clique Máxima: ";
     for (int node : maxClique) {

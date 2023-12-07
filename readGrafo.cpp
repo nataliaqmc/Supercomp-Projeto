@@ -6,7 +6,7 @@
 // Função para ler o grafo a partir do arquivo de entrada
 std::vector<std::vector<int>> LerGrafo(const std::string& nomeArquivo, int& numVertices) {
     std::ifstream arquivo(nomeArquivo);
-    int numArestas;
+    int numArestas = 0;
     arquivo >> numVertices >> numArestas;
 
     std::vector<std::vector<int>> grafo(numVertices, std::vector<int>(numVertices, 0));
@@ -21,4 +21,13 @@ std::vector<std::vector<int>> LerGrafo(const std::string& nomeArquivo, int& numV
     arquivo.close();
 
     return grafo;
+}
+
+int main() {
+    std::string nomeArquivo = "grafo.txt";
+    int numVertices = 1000;
+    std::vector<std::vector<int>> grafo =  LerGrafo(nomeArquivo,numVertices);
+    std::cout << std::endl;
+
+    return 0;
 }

@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <list>
+#include <random>
 
 std::vector<std::vector<int>> LerGrafo(const std::string& nomeArquivo, int& numVertices) {
     std::ifstream arquivo(nomeArquivo);
@@ -19,22 +20,28 @@ std::vector<std::vector<int>> LerGrafo(const std::string& nomeArquivo, int& numV
     }
 
     arquivo.close();
-    std::cout << "aqui" << std::endl;
-
     return grafo;
 }
+
 std::list<int> EncontrarCliqueMaxima(std::vector<std::vector<int>>& grafo, int numVertices) {
     std::list<int> cliqueMaxima;
-    std::list<int> candidatos;
+    std::vector<int> candidatos;  // Alteração do tipo para vector
 
     // Inicialmente, todos os nós são candidatos
     for (int i = 0; i < numVertices; ++i) {
         candidatos.push_back(i);
     }
 
+    // Gerador de números aleatórios
+    std::random_device rd;
+    std::mt19937 g(rd());
+
     while (!candidatos.empty()) {
-        int v = candidatos.back();
-        candidatos.pop_back();
+        // Embaralhar os candidatos
+        std::shuffle(candidatos.begin(), candidatos.end(), g);
+
+        int v = candidatos.front();
+        candidatos.erase(candidatos.begin());  // Modificação para remover o primeiro elemento
 
         bool podeAdicionar = true;
 
@@ -48,7 +55,7 @@ std::list<int> EncontrarCliqueMaxima(std::vector<std::vector<int>>& grafo, int n
         if (podeAdicionar) {
             cliqueMaxima.push_back(v);
 
-            std::list<int> novosCandidatos;
+            std::vector<int> novosCandidatos;  // Alteração do tipo para vector
 
             for (int u : candidatos) {
                 bool adjacenteATodos = true;
@@ -72,11 +79,10 @@ std::list<int> EncontrarCliqueMaxima(std::vector<std::vector<int>>& grafo, int n
     return cliqueMaxima;
 }
 
-
 int main() {
     std::string nomeArquivo = "grafo.txt";
     int numVertices = 1000;
-    std::vector<std::vector<int>> grafo =  LerGrafo(nomeArquivo,numVertices);
+    std::vector<std::vector<int>> grafo = LerGrafo(nomeArquivo, numVertices);
     std::list<int> maxClique = EncontrarCliqueMaxima(grafo, numVertices);
 
     std::cout << "Clique Máxima: ";
